@@ -1,0 +1,183 @@
+<!--
+  CleverTap Custom HTML Web Pop-up — BASIC TEMPLATE (card layout)
+  ----------------------------------------------------------------
+  This card is sized for Banner / Interstitial. It is NOT valid for a Box: a Box is
+  capped at 350px wide x 85px tall, and this 360px-wide stacked card exceeds that.
+  For a Box, build the compact one-row strip described in SKILL.md / references/web-popup.md
+  ("Box size cap") and reuse only this file's tracking, close and CTA wiring.
+
+  The close script below defaults to the Box wrapper id (wizParDiv0). For Banner or
+  Interstitial, change WRAPPER_ID(S) to match — see references/web-popup.md. The wrapper
+  ids are NOT interchangeable between layouts (Banner is wizParDiv2, not
+  wizParDiv1; Interstitial uses a different id family entirely).
+
+  INTERSTITIAL BACKDROP: for an Interstitial, change --popup-backdrop in the <style>
+  block from `transparent` to the backdrop the user confirmed (default:
+  semi-transparent black, rgba(0,0,0,0.6)). Leave it `transparent` for Box/Banner.
+
+  Replace TITLE, MESSAGE, CTA_LABEL, CTA URL, and event names with campaign-specific
+  values (or remove the ctWebTrack calls entirely if the user chose to skip event
+  tracking). Write CTA URLs INLINE (not inside a named function) or the SDK cannot
+  capture them for click-through attribution.
+
+  IMPORTANT — the wzrk_c2a attribute below is only correct if the user confirmed
+  "Enable click tracking for Custom HTML" is OFF in their dashboard, and this CTA is
+  one they want tracked. If that flag is ON, DELETE wzrk_c2a from the button — the
+  SDK already auto-tracks every button/link, and adding it manually double-counts.
+  Never guess this flag's state; always confirm it first (see clarifying-questions.md).
+
+  Dashboard checklist:
+  - Template: Custom HTML (under Web Pop-up)
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Web Pop-up</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: transparent !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  /* Backdrop behind the card. Box / Banner: leave `transparent` so the host page stays
+     visible. Interstitial: set to the confirmed backdrop — default semi-transparent
+     black, rgba(0,0,0,0.6) — see references/web-popup.md. */
+  :root { --popup-backdrop: transparent; }
+
+  .overlay {
+    position: fixed; inset: 0;
+    background: var(--popup-backdrop);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 999999;
+    animation: fadeIn 0.3s ease-out;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .card {
+    position: relative;
+    width: min(360px, 92vw);
+    background: #fff;
+    border-radius: 16px;
+    padding: 32px 24px 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    text-align: center;
+    animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes slideUp {
+    from { transform: translateY(20px) scale(0.95); opacity: 0; }
+    to   { transform: translateY(0) scale(1); opacity: 1; }
+  }
+
+  .close-btn {
+    position: absolute;
+    top: 12px; right: 12px;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.08);
+    border: none;
+    color: #555;
+    font-size: 18px;
+    cursor: pointer;
+    z-index: 10;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #111;
+    margin-bottom: 8px;
+  }
+
+  .message {
+    font-size: 15px;
+    line-height: 1.5;
+    color: #555;
+    margin-bottom: 24px;
+  }
+
+  .cta {
+    display: inline-block;
+    width: 100%;
+    padding: 14px 24px;
+    font-size: 15px;
+    font-weight: 600;
+    background: #6366f1;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: transform 0.15s;
+  }
+  .cta:active { transform: scale(0.98); }
+
+  @media (max-width: 420px) {
+    .card { padding: 28px 20px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="overlay" id="overlay">
+  <div class="card">
+    <button class="close-btn" onclick="closePopUp()" aria-label="Close">✕</button>
+    <div class="title">TITLE</div>
+    <div class="message">MESSAGE — your pop-up body text goes here.</div>
+    <!--
+      CTA: the URL MUST be written inline in onclick/href, not inside a named
+      function, or the SDK's click parser cannot capture it for attribution.
+      This example opens in a NEW tab. For same-tab, use the <a href> form
+      documented in references/web-popup.md.
+
+      wzrk_c2a below is only correct if the user confirmed "Enable click tracking
+      for Custom HTML" is OFF and wants this CTA tracked. If it's ON, DELETE
+      wzrk_c2a — the SDK already tracks every button/link automatically.
+    -->
+    <button class="cta" wzrk_c2a onclick="trackCTA(); window.open('https://example.com','_blank')">CTA_LABEL</button>
+  </div>
+</div>
+
+<script>
+  // ===== Event names — come from the USER. If they chose to skip event tracking,
+  // DELETE these two lines, the trackCTA() call in the CTA button above, the
+  // ctWebTrack function, and the impression call at the bottom — don't leave
+  // placeholder tracking in a build that asked for none. =====
+  var EVT_VIEWED  = 'TODO_EVENT_VIEWED';   // fired on load (impression)
+  var EVT_CLICKED = 'TODO_EVENT_CLICKED';  // fired on CTA click
+
+  function ctWebTrack(name, props) {
+    try { if (window.parent && window.parent.clevertap) window.parent.clevertap.event.push(name, props || {}); } catch (e) {}
+  }
+
+  // ===== Close: remove the Box wrapper the SDK injected into the parent page =====
+  // There is no closePopup() SDK method. Box -> wizParDiv0. If this template is
+  // repurposed for Banner or Interstitial, swap the id(s) — see references/web-popup.md.
+  function closePopUp() {
+    try {
+      var wrapper = window.parent.document.getElementById('wizParDiv0');
+      if (wrapper) setTimeout(function () { wrapper.remove(); }, 0);
+    } catch (e) {}
+    var ov = document.getElementById('overlay'); if (ov) ov.style.display = 'none';
+  }
+
+  // CTA click: track only. The URL itself stays inline on the button (see
+  // above) so the SDK's click parser can capture it — do not move it here.
+  function trackCTA() {
+    ctWebTrack(EVT_CLICKED /* TODO: confirm event name with user */, {
+      // Add campaign-specific properties here
+    });
+  }
+
+  // ===== Impression event =====
+  ctWebTrack(EVT_VIEWED /* TODO: confirm event name with user */, {
+    // Add campaign-specific properties here
+  });
+</script>
+
+</body>
+</html>
